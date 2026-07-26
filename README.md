@@ -1,242 +1,152 @@
-# Complicated_Appendicitis
-# 🏥 Preoperative Prediction Model for Complicated Appendicitis
+# Interpretable Machine-Learning Research Prototype for Pediatric Complicated Appendicitis
 
-A machine learning-based preoperative prediction system for complicated appendicitis (gangrenous/perforated/periappendicitis), using AdaBoost algorithm with rigorous feature selection and external validation.
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-research%20prototype-FF4B4B.svg)](https://comappy-model.streamlit.app/)
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Streamlit](https://img.shields.io/badge/Streamlit-App-red.svg)](https://streamlit.io/)
+This repository provides a locked AdaBoost model and an interactive Streamlit
+research prototype for preoperative risk stratification of complicated
+appendicitis in children.
 
-## 📋 Project Overview
+The model was developed for children already undergoing surgical evaluation and
+appendectomy for clinically suspected acute appendicitis. It is not intended to
+diagnose appendicitis in unselected children presenting with abdominal pain.
 
-This project develops a machine learning-based preoperative prediction model for complicated appendicitis, aiming to help clinicians identify high-risk patients before surgery and optimize treatment decisions.
+> **Research-use notice:** This is a retrospective prediction-model research
+> prototype, not a clinically validated medical device. Its output is a
+> model-derived relative risk score rather than a calibrated absolute
+> probability. It must not be used as a stand-alone basis for diagnosis,
+> treatment selection, or other clinical decisions. Prospective validation,
+> local recalibration, and clinical-impact assessment are required before
+> clinical use.
 
-### Key Features
+## Study Design
 
-- ✅ **High Accuracy**: Test set AUC = 0.828, Sensitivity 92.7%, Specificity 65.2%
-- ✅ **Feature Optimization**: Selected 7 optimal features from 23 candidate features
-- ✅ **Rigorous Validation**: Includes external validation and temporal validation to ensure model generalizability
-- ✅ **Clinical Utility**: All features are preoperatively available, no postoperative information required
-- ✅ **Web Application**: Provides Streamlit Web interface for easy clinical use
+The study used three retrospectively assembled cohorts from two Chinese tertiary
+children's hospitals:
 
-## 🎯 Model Performance
+| Cohort | Institution and period | Sample size | Role |
+| --- | --- | ---: | --- |
+| Derivation | Shanxi Children's Hospital, Jan-Dec 2024 | 539 | Split into training and model-selection hold-out sets |
+| Training | Derivation-cohort subset | 377 | Model fitting, stratified five-fold cross-validation, hyperparameter tuning, and SHAP feature ranking |
+| Internal model-selection hold-out | Derivation-cohort subset | 162 | Algorithm comparison, nested feature-set evaluation, decision-threshold selection, and development-stage performance reporting |
+| External validation | Tianjin Children's Hospital, Jan-Mar 2025 | 114 | Independent retrospective validation |
+| Temporal validation | Shanxi Children's Hospital, Jan-Mar 2025 | 120 | Independent retrospective validation |
 
-### Final Model (AdaBoost, 7 Features)
+The external and temporal cohorts were withheld from all development-stage
+decisions.
 
-| Metric                | Training Set   | Test Set        | External Validation | Temporal Validation |
-| --------------------- | -------------- | --------------- | ------------------- | ------------------- |
-| **AUC**         | 0.788 ± 0.083 | **0.828** | 0.856               | 0.843               |
-| **Sensitivity** | -              | **92.7%** | 90.0%               | 88.0%               |
-| **Specificity** | -              | **65.2%** | 70.0%               | 68.0%               |
-| **Accuracy**    | -              | **81.5%** | 82.0%               | 80.0%               |
+The primary outcome was determined from postoperative pathology reports.
+Complicated appendicitis was defined by documented gangrenous or perforated
+appendicitis, transmural inflammation with periappendiceal extension, or
+periappendiceal abscess.
 
-### Optimal Classification Threshold
+## Model Development
 
-- **Threshold**: 0.4963 (determined by Youden's index)
+- Twenty-four preoperative variables were initially screened.
+- Procalcitonin was excluded before modeling because 82.2% of values were
+  missing; the remaining 23 candidate predictors entered the modeling
+  pipeline.
+- Continuous-variable imputation was fitted on the training set and applied
+  without refitting to the hold-out and validation cohorts.
+- Eleven candidate algorithms were tuned using stratified five-fold
+  cross-validation within the training set.
+- AdaBoost had the highest internal hold-out AUC point estimate and was carried
+  forward.
+- SHAP-based feature ranking was performed in the training set; nested
+  feature-set comparison was performed in the internal model-selection
+  hold-out set.
+- The decision threshold (0.4963) was determined in the hold-out set and fixed
+  before application to the external and temporal cohorts.
 
-## 🔬 Final 7 Features
+Because the internal hold-out set informed algorithm, feature-set, and threshold
+selection, its estimates are development-stage results and may be optimistic.
 
-After SHAP importance analysis and DeLong test, the final model uses the following 7 features:
+## Final Seven Predictors
 
-1. **preop_crp** - Preoperative C-reactive protein (mg/L) ⭐ Most important
-2. **MLR** - Monocyte-to-lymphocyte ratio ⭐ Second most important
-3. **NLR** - Neutrophil-to-lymphocyte ratio
-4. **diameter** - Appendiceal diameter (mm) ⭐ Important
-5. **weight** - Body weight (kg)
-6. **preop_plt** - Preoperative platelet count (×10⁹/L)
-7. **NMLR** - Neutrophil/(monocyte+lymphocyte) ratio
+1. Preoperative C-reactive protein (CRP)
+2. Monocyte-to-lymphocyte ratio (MLR)
+3. Neutrophil-to-lymphocyte ratio (NLR)
+4. Appendiceal diameter
+5. Body weight
+6. Preoperative platelet count
+7. Neutrophil-monocyte-to-lymphocyte ratio (NMLR)
 
-> **Note**: MLR, NLR, and NMLR are derived indicators, automatically calculated from basic laboratory values
+MLR, NLR, and NMLR are calculated from the corresponding preoperative blood-cell
+counts entered in the prototype.
 
+## Reported Performance
 
-### Data Preprocessing
+The following values correspond to the final seven-feature AdaBoost model at
+the fixed development-stage threshold:
 
-- MICE multiple imputation for missing values
-- Excluded features with >80% missing rate (preop_pct)
-- Impute basic indicators first, then calculate derived indicators
-- Ensure mathematical logic consistency
+| Cohort | AUC (95% CI) | Sensitivity | Specificity | Brier score |
+| --- | ---: | ---: | ---: | ---: |
+| Internal model-selection hold-out | 0.831 (0.759-0.899) | 0.938 | 0.667 | 0.180 |
+| External validation | 0.828 (0.741-0.905) | 0.938 | 0.500 | 0.189 |
+| Temporal validation | 0.849 (0.766-0.914) | 0.928 | 0.510 | 0.181 |
 
-## 🚀 Quick Start
+Discrimination did not show substantial apparent degradation in the available
+external and temporal retrospective cohorts. These results do not establish
+prospective generalizability or clinical impact. Calibration was compressed in
+the validation cohorts, so raw model outputs should not be interpreted as
+calibrated absolute probabilities.
 
-### 1. Requirements
+## Web Research Prototype
+
+The interactive prototype is available at:
+
+**https://comappy-model.streamlit.app/**
+
+The interface:
+
+- accepts the required preoperative inputs;
+- automatically calculates MLR, NLR, and NMLR;
+- displays a model-derived relative risk score;
+- reports whether the score is above or below the fixed development-stage
+  threshold; and
+- displays a research-use disclaimer.
+
+It does not provide treatment recommendations.
+
+## Run Locally
 
 ```bash
-Python >= 3.8
+python -m pip install -r web/requirements.txt
+streamlit run web/app.py
 ```
 
-### 2. Install Dependencies
+The deployed application expects `final_model.pkl` to be available in the
+`web/` directory.
 
-```bash
-pip install -r requirements.txt
+## Repository Files
+
+```text
+web/
+├── app.py                 # Streamlit research-prototype interface
+├── final_model.pkl        # Locked seven-feature AdaBoost model
+├── final_features.pkl     # Stored feature list
+├── requirements.txt       # Runtime dependencies
+└── .streamlit/config.toml # Streamlit configuration
 ```
 
-Main dependencies:
+No patient-level clinical data are included in this public repository.
 
-- pandas >= 1.3.0
-- numpy >= 1.21.0, <2.0
-- scikit-learn >= 0.24.0
-- matplotlib >= 3.4.0
-- seaborn >= 0.11.0
-- joblib >= 1.0.0
+## Limitations
 
-### 3. Run Analysis
+- Retrospective study design.
+- The internal hold-out set was reused for multiple development decisions.
+- External and temporal validation cohorts were modest in size.
+- All cohorts were drawn from Chinese tertiary pediatric centers.
+- The histopathological endpoint may vary across pathologists and institutions.
+- Prospective, international, and clinical-impact evaluations remain necessary.
 
-#### Data Preprocessing
+## Contact
 
-```bash
-# Open and run
-jupyter notebook 阑尾炎数据分析.ipynb
-```
+For research questions, please contact:
 
-#### Model Training
-
-```bash
-# Open and run
-jupyter notebook 阑尾炎机器学习_ECM方法.ipynb
-```
-
-#### External Validation
-
-```bash
-# Open and run
-jupyter notebook 阑尾炎机器学习_外部验证与时序验证.ipynb
-```
-
-## 🌐 Web Application Deployment
-
-This project includes a complete Streamlit Web application that can be deployed to Streamlit Community Cloud.
-
-### Local Run
-
-```bash
-cd web
-python setup.py  # Copy model files
-streamlit run app.py
-```
-
-### Deploy to Streamlit Cloud
-
-1. Push code to a public GitHub repository
-2. Visit [Streamlit Community Cloud](https://share.streamlit.io/)
-3. Login with your GitHub account
-4. Click "New app" and configure:
-   - **Repository**: Your GitHub repository
-   - **Branch**: main
-   - **Main file path**: `web/app.py`
-5. Click "Deploy"
-
-For detailed deployment guide, see [web/DEPLOY.md](web/DEPLOY.md)
-
-## 🔬 Research Methods
-
-### Model Selection
-
-- Compared 11 machine learning algorithms (RF, GBM, XGBoost, AdaBoost, SVM, LR, etc.)
-- Evaluated using 10-fold stratified cross-validation
-- Selected best model based on test set AUC
-
-### Feature Selection
-
-- Used SHAP values to assess feature importance
-- Gradually reduced features through DeLong test
-- Finally determined 7 optimal features
-
-### Model Validation
-
-- **Internal Validation**: 70% training / 30% test
-- **External Validation**: Different hospital data
-- **Temporal Validation**: Different time period data
-
-### Performance Evaluation
-
-- ROC curve and AUC
-- Sensitivity, Specificity, PPV, NPV
-- Confusion matrix
-- Calibration curve
-- Decision curve analysis (DCA)
-
-## 📈 Main Results
-
-### Model Comparison (Test Set AUC)
-
-| Model                 | AUC             | Sensitivity     | Specificity     |
-| --------------------- | --------------- | --------------- | --------------- |
-| **AdaBoost** ⭐ | **0.828** | **92.7%** | **65.2%** |
-| SVM                   | 0.826           | 91.7%           | 60.6%           |
-| XGBoost               | 0.825           | 89.6%           | 65.2%           |
-| Random Forest         | 0.811           | 91.7%           | 56.1%           |
-| Logistic Regression   | 0.798           | 88.5%           | 62.1%           |
-
-### Feature Importance (SHAP Values)
-
-1. **preop_crp** (0.597) - Preoperative C-reactive protein
-2. **MLR** (0.320) - Monocyte-to-lymphocyte ratio
-3. **diameter** (0.215) - Appendiceal diameter
-4. **weight** (0.110) - Body weight
-5. **preop_lymph** (0.103) - Preoperative lymphocyte count
-
-## 📝 Usage Instructions
-
-
-### For Clinicians
-
-1. Use the Web application for prediction (recommended)
-2. Or directly load model files for batch prediction
-
-```python
-import joblib
-import pandas as pd
-
-# Load model
-model = joblib.load('结果/final_model.pkl')
-
-# Prepare data (7 features)
-features = ['preop_crp', 'MLR', 'NLR', 'diameter', 'weight', 'preop_plt', 'NMLR']
-X = df[features]
-
-# Predict
-prob = model.predict_proba(X)[:, 1]
-pred = (prob >= 0.4963).astype(int)
-```
-
-## ⚠️ Important Notes
-
-1. **Data Privacy**: Data used in this project has been de-identified and does not contain patient privacy information
-2. **Clinical Use**: This model is for reference only and cannot replace professional medical diagnosis
-3. **Model Limitations**: The model was trained on specific population data and may require re-validation in different populations
-4. **Feature Requirements**: Ensure all 7 input features are complete and accurate
-
-## 📚 Related Documentation
-
-- [Web Application Deployment Guide](web/DEPLOY.md)
-- [Web Application Quick Start](web/QUICKSTART.md)
-- [Complete Project Summary](总结/项目完整总结.md)
-- [External Validation Report](总结/外部验证报告.md)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit Issues and Pull Requests.
-
-
-## 📄 License
-
-This project is for research use only. For commercial use, please contact the author.
-
-## ⚠️ Disclaimer
-
-This prediction system is for reference only and cannot replace professional medical diagnosis. All medical decisions should be made by professional doctors. The author is not responsible for any consequences arising from the use of this system.
-
-## 📧 Contact
-
-For questions or suggestions, please contact:
-- Email: xdk1207@sina.com
-
-## 🙏 Acknowledgments
-
-Thanks to all clinicians and researchers who participated in data collection and model validation.
+**Xu DeKai**  
+Email: xdk1207@sina.com
 
 ---
 
-**Version**: v1.0
-**Last Updated**: 2026
-**Maintenance Status**: ✅ Actively maintained
+Last updated: July 2026
