@@ -1,5 +1,5 @@
 """
-Preoperative Prediction Web Application for Complicated Appendicitis
+Research prototype for preoperative risk stratification of complicated appendicitis
 Based on AdaBoost Machine Learning Model (7 Features)
 """
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Page configuration
 st.set_page_config(
-    page_title="Complicated Appendicitis Prediction System",
+    page_title="Complicated Appendicitis Research Prototype",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -62,7 +62,8 @@ st.markdown("""
 # ===== Final 7 Features =====
 FINAL_FEATURES = ['preop_crp', 'MLR', 'NLR', 'diameter', 'weight', 'preop_plt', 'NMLR']
 
-# Optimal classification threshold (determined during training)
+# Development-stage decision threshold determined in the internal
+# model-selection hold-out set and fixed before independent validation.
 OPTIMAL_THRESHOLD = 0.4963
 
 # Feature English names (7 features only)
@@ -203,7 +204,8 @@ def predict_risk(model, input_data):
             st.error(f"❌ Missing values in features: {', '.join(missing_cols)}")
             return None
         
-        # Predict probability (AdaBoost doesn't need standardization)
+        # Generate the model output score (AdaBoost doesn't need standardization).
+        # The score is not presented as a calibrated absolute probability.
         if hasattr(model, 'predict_proba'):
             prob = model.predict_proba(X)[0, 1]
         else:
@@ -218,8 +220,14 @@ def predict_risk(model, input_data):
 
 def main():
     # Title
-    st.markdown('<div class="main-header">🏥 Complicated Appendicitis Prediction System</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Based on AdaBoost Machine Learning Model | 7 Features | Test AUC = 0.828</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🏥 Complicated Appendicitis Research Prototype</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Retrospective AdaBoost Model | 7 Features | Internal Model-Selection Hold-Out AUC = 0.831</div>', unsafe_allow_html=True)
+    st.warning(
+        "Research prototype only. Intended for further evaluation among children with "
+        "confirmed or highly suspected appendicitis who are already in a surgical evaluation "
+        "pathway. The displayed score is not a calibrated absolute probability and must not "
+        "be used for stand-alone clinical decision-making."
+    )
     
     # Load model
     model = load_model()
@@ -233,13 +241,13 @@ def main():
         **Function:**
         - Input patient preoperative clinical features
         - System automatically calculates derived ratio indicators
-        - Predict complicated appendicitis risk probability
+        - Generate a model-derived relative risk score for research use
         
         **Model Information:**
         - Algorithm: AdaBoost
         - Number of Features: 7
-        - Test Set AUC: 0.828
-        - Optimal Threshold: 0.4963
+        - Internal Model-Selection Hold-Out AUC: 0.831
+        - Development-Stage Threshold: 0.4963
         
         **7 Features:**
         1. Preoperative CRP
@@ -253,16 +261,18 @@ def main():
         **Notes:**
         - All inputs are preoperatively available data
         - System automatically calculates MLR, NLR, NMLR
-        - Prediction results are for reference only, clinical judgment required
+        - Research prototype only; not for stand-alone diagnosis or treatment selection
+        - The displayed score is not a calibrated absolute probability
+        - Prospective validation and local recalibration are required before clinical use
         """)
         
         st.markdown("---")
         st.markdown("**📊 Model Performance Metrics**")
-        st.metric("AUC", "0.828")
-        st.metric("Sensitivity", "92.7%")
-        st.metric("Specificity", "65.2%")
-        st.metric("Accuracy", "81.5%")
-        st.metric("Optimal Threshold", "0.4963")
+        st.metric("Internal Hold-Out AUC", "0.831")
+        st.metric("Sensitivity", "93.8%")
+        st.metric("Specificity", "66.7%")
+        st.metric("Accuracy", "82.7%")
+        st.metric("Development-Stage Threshold", "0.4963")
     
     # Main interface: Input form
     st.header("📝 Patient Information Input")
@@ -363,7 +373,7 @@ def main():
     st.markdown("---")
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
-        predict_button = st.button("🔮 Start Prediction", type="primary", use_container_width=True)
+        predict_button = st.button("🔮 Generate Research Score", type="primary", use_container_width=True)
     
     # Display prediction results
     if predict_button:
@@ -377,30 +387,30 @@ def main():
                 prob = predict_risk(model, input_data)
             
             if prob is not None:
-                # Risk level judgment (using optimal threshold 0.4963)
-                risk_level = "High Risk" if prob >= OPTIMAL_THRESHOLD else "Low Risk"
+                # Threshold classification using the development-stage cut-off (0.4963)
+                risk_level = "Above Threshold" if prob >= OPTIMAL_THRESHOLD else "Below Threshold"
                 risk_class = "high-risk" if prob >= OPTIMAL_THRESHOLD else "low-risk"
                 
                 # Display prediction results
                 st.markdown("---")
-                st.header("📊 Prediction Results")
+                st.header("📊 Research Prototype Output")
                 
                 # Main prediction box
                 if prob >= OPTIMAL_THRESHOLD:
                     st.markdown(f"""
                     <div class="prediction-box high-risk">
-                        <h2 style="color: #ff0000; margin-bottom: 0.5rem;">⚠️ High Risk: Complicated Appendicitis</h2>
+                        <h2 style="color: #ff0000; margin-bottom: 0.5rem;">⚠️ Model Classification: Above Threshold</h2>
                         <h1 style="color: #ff0000; font-size: 3rem; margin: 0;">{prob:.1%}</h1>
-                        <p style="margin-top: 0.5rem; color: #666;">Recommendation: Close monitoring, consider early surgical intervention</p>
+                        <p style="margin-top: 0.5rem; color: #666;">Model-derived relative risk score, not a calibrated absolute probability. Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
                         <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Threshold: {OPTIMAL_THRESHOLD:.1%}</p>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                     <div class="prediction-box low-risk">
-                        <h2 style="color: #0066cc; margin-bottom: 0.5rem;">✓ Low Risk: Simple Appendicitis</h2>
+                        <h2 style="color: #0066cc; margin-bottom: 0.5rem;">✓ Model Classification: Below Threshold</h2>
                         <h1 style="color: #0066cc; font-size: 3rem; margin: 0;">{prob:.1%}</h1>
-                        <p style="margin-top: 0.5rem; color: #666;">Recommendation: Routine treatment, continue observation</p>
+                        <p style="margin-top: 0.5rem; color: #666;">Model-derived relative risk score, not a calibrated absolute probability. Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
                         <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Threshold: {OPTIMAL_THRESHOLD:.1%}</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -408,13 +418,13 @@ def main():
                 # Detailed metrics
                 col_met1, col_met2, col_met3, col_met4 = st.columns(4)
                 with col_met1:
-                    st.metric("Predicted Probability", f"{prob:.1%}")
+                    st.metric("Model-Derived Risk Score", f"{prob:.1%}")
                 with col_met2:
-                    st.metric("Risk Level", risk_level)
+                    st.metric("Threshold Classification", risk_level)
                 with col_met3:
                     st.metric("Classification Threshold", f"{OPTIMAL_THRESHOLD:.1%}")
                 with col_met4:
-                    st.metric("Model AUC", "0.828")
+                    st.metric("Internal Hold-Out AUC", "0.831")
                 
                 # Display all input data (7 features only)
                 with st.expander("📋 View 7 Features Used by Model"):
@@ -426,8 +436,8 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; padding: 1rem;">
-        <p>⚠️ <strong>Disclaimer</strong>: This prediction system is for reference only and cannot replace professional medical diagnosis. All medical decisions should be made by professional doctors.</p>
-        <p>Based on AdaBoost Machine Learning Model | 7 Features | Test AUC = 0.828 | Optimal Threshold = 0.4963</p>
+        <p>⚠️ <strong>Research-use disclaimer</strong>: This retrospective model is a research prototype, not a clinically validated medical device. The output is a model-derived relative risk score, not a calibrated absolute probability, and must not be used for stand-alone diagnosis or treatment decisions.</p>
+        <p>AdaBoost Model | 7 Features | Internal Model-Selection Hold-Out AUC = 0.831 | Development-Stage Threshold = 0.4963</p>
     </div>
     """, unsafe_allow_html=True)
 
