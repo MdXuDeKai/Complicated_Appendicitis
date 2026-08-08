@@ -74,7 +74,7 @@ FEATURE_NAMES_EN = {
     'diameter': 'Appendiceal Diameter (mm)',
     'weight': 'Body Weight (kg)',
     'preop_plt': 'Preoperative Platelet Count (×10⁹/L)',
-    'NMLR': 'NMLR (Neutrophil/(Monocyte+Lymphocyte) Ratio)'
+    'NMLR': 'NMLR ((Neutrophil+Monocyte)/Lymphocyte Ratio)'
 }
 
 # Feature units/descriptions
@@ -175,9 +175,9 @@ def calculate_derived_features(input_data):
     else:
         df['MLR'] = np.nan
     
-    # Calculate NMLR (Neutrophil/(Monocyte+Lymphocyte))
+    # Calculate NMLR ((Neutrophil+Monocyte)/Lymphocyte)
     if 'preop_neut' in df.columns and 'preop_mono' in df.columns and 'preop_lymph' in df.columns:
-        df['NMLR'] = df['preop_neut'] / (df['preop_mono'] + df['preop_lymph'] + 1e-10)
+        df['NMLR'] = (df['preop_neut'] + df['preop_mono']) / (df['preop_lymph'] + 1e-10)
     else:
         df['NMLR'] = np.nan
     
@@ -225,7 +225,8 @@ def main():
     st.warning(
         "Research prototype only. Intended for further evaluation among children with "
         "confirmed or highly suspected appendicitis who are already in a surgical evaluation "
-        "pathway. The displayed score is not a calibrated absolute probability and must not "
+        "pathway. The output is displayed as a decimal raw model score on the model-output "
+        "scale—not as a percentage—and is not a calibrated absolute probability. It must not "
         "be used for stand-alone clinical decision-making."
     )
     
@@ -241,7 +242,7 @@ def main():
         **Function:**
         - Input patient preoperative clinical features
         - System automatically calculates derived ratio indicators
-        - Generate a model-derived relative risk score for research use
+        - Generate a raw model score for research use
         
         **Model Information:**
         - Algorithm: AdaBoost
@@ -262,7 +263,7 @@ def main():
         - All inputs are preoperatively available data
         - System automatically calculates MLR, NLR, NMLR
         - Research prototype only; not for stand-alone diagnosis or treatment selection
-        - The displayed score is not a calibrated absolute probability
+        - The displayed decimal score is a raw model output, not a calibrated absolute probability
         - Prospective validation and local recalibration are required before clinical use
         """)
         
@@ -367,7 +368,7 @@ def main():
                      help="Monocyte-to-Lymphocyte Ratio")
         with col_der3:
             st.metric("NMLR", f"{input_data.get('NMLR', 0):.3f}",
-                     help="Neutrophil/(Monocyte+Lymphocyte) Ratio")
+                     help="(Neutrophil+Monocyte)/Lymphocyte Ratio")
     
     # Predict button
     st.markdown("---")
@@ -400,29 +401,29 @@ def main():
                     st.markdown(f"""
                     <div class="prediction-box high-risk">
                         <h2 style="color: #ff0000; margin-bottom: 0.5rem;">⚠️ Model Classification: Above Threshold</h2>
-                        <h1 style="color: #ff0000; font-size: 3rem; margin: 0;">{prob:.1%}</h1>
-                        <p style="margin-top: 0.5rem; color: #666;">Model-derived relative risk score, not a calibrated absolute probability. Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
-                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Threshold: {OPTIMAL_THRESHOLD:.1%}</p>
+                        <h1 style="color: #ff0000; font-size: 3rem; margin: 0;">{prob:.3f}</h1>
+                        <p style="margin-top: 0.5rem; color: #666;"><strong>Raw model score on the model-output scale—not a calibrated absolute probability.</strong> Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Development-stage score threshold: {OPTIMAL_THRESHOLD:.4f}</p>
                     </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                     <div class="prediction-box low-risk">
                         <h2 style="color: #0066cc; margin-bottom: 0.5rem;">✓ Model Classification: Below Threshold</h2>
-                        <h1 style="color: #0066cc; font-size: 3rem; margin: 0;">{prob:.1%}</h1>
-                        <p style="margin-top: 0.5rem; color: #666;">Model-derived relative risk score, not a calibrated absolute probability. Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
-                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Threshold: {OPTIMAL_THRESHOLD:.1%}</p>
+                        <h1 style="color: #0066cc; font-size: 3rem; margin: 0;">{prob:.3f}</h1>
+                        <p style="margin-top: 0.5rem; color: #666;"><strong>Raw model score on the model-output scale—not a calibrated absolute probability.</strong> Research interpretation only; do not use as a stand-alone basis for treatment decisions.</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #999;">Development-stage score threshold: {OPTIMAL_THRESHOLD:.4f}</p>
                     </div>
                     """, unsafe_allow_html=True)
                 
                 # Detailed metrics
                 col_met1, col_met2, col_met3, col_met4 = st.columns(4)
                 with col_met1:
-                    st.metric("Model-Derived Risk Score", f"{prob:.1%}")
+                    st.metric("Raw Model Score", f"{prob:.3f}")
                 with col_met2:
                     st.metric("Threshold Classification", risk_level)
                 with col_met3:
-                    st.metric("Classification Threshold", f"{OPTIMAL_THRESHOLD:.1%}")
+                    st.metric("Score Threshold", f"{OPTIMAL_THRESHOLD:.4f}")
                 with col_met4:
                     st.metric("Internal Hold-Out AUC", "0.831")
                 
@@ -436,7 +437,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; padding: 1rem;">
-        <p>⚠️ <strong>Research-use disclaimer</strong>: This retrospective model is a research prototype, not a clinically validated medical device. The output is a model-derived relative risk score, not a calibrated absolute probability, and must not be used for stand-alone diagnosis or treatment decisions.</p>
+        <p>⚠️ <strong>Research-use disclaimer</strong>: This retrospective model is a research prototype, not a clinically validated medical device. The decimal output is a raw model score, not a percentage or calibrated absolute probability, and must not be used for stand-alone diagnosis or treatment decisions.</p>
         <p>AdaBoost Model | 7 Features | Internal Model-Selection Hold-Out AUC = 0.831 | Development-Stage Threshold = 0.4963</p>
     </div>
     """, unsafe_allow_html=True)
